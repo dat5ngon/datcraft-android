@@ -276,16 +276,10 @@ class FloatingWebViewService : Service() {
     }
 
     private fun setupControls() {
-        // Back button -- navigate the floating WebView back
-        overlayView?.findViewById<android.view.View>(R.id.btnBack)?.setOnClickListener {
-            Log.d(TAG, "Back button clicked, canGoBack=${floatingWebView?.canGoBack()}")
-            floatingWebView?.let { wv ->
-                if (wv.canGoBack()) {
-                    wv.goBack()
-                } else {
-                    wv.loadUrl(MainActivity.HOME_URL)
-                }
-            }
+        // Home button -- navigate the floating WebView to home
+        overlayView?.findViewById<android.view.View>(R.id.btnHome)?.setOnClickListener {
+            Log.d(TAG, "Home button clicked")
+            floatingWebView?.loadUrl(MainActivity.HOME_URL)
         }
 
         // Swap sides button
