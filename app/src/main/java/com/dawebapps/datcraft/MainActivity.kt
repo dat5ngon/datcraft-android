@@ -223,6 +223,17 @@ class MainActivity : AppCompatActivity() {
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             val fileName = URLUtil.guessFileName(url, contentDisposition, mimeType)
             Log.i(TAG, "Download requested: $fileName from $url")
+
+            // Delete any previous partial download to avoid "Precondition failed" resume errors
+            try {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val existingFile = java.io.File(downloadsDir, fileName)
+                if (existingFile.exists()) {
+                    existingFile.delete()
+                    Log.i(TAG, "Deleted existing file: $fileName")
+                }
+            } catch (_: Exception) {}
+
             try {
                 val request = DownloadManager.Request(Uri.parse(url)).apply {
                     setMimeType(mimeType)
