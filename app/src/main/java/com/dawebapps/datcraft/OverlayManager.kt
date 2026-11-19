@@ -4,10 +4,10 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.PixelFormat
 import android.os.Build
-import android.util.DisplayMetrics
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager
 
 /**
@@ -36,9 +36,26 @@ class OverlayManager(private val context: Context) {
 
     /** Create WindowManager.LayoutParams for the floating overlay. */
     fun createLayoutParams(): WindowManager.LayoutParams {
-        val metrics = context.resources.displayMetrics
-        val screenW = metrics.widthPixels
-        val screenH = metrics.heightPixels
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val screenW: Int
+        val screenH: Int
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = wm.currentWindowMetrics
+            val insets = windowMetrics.windowInsets
+                .getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
+            screenW = windowMetrics.bounds.width()
+            screenH = windowMetrics.bounds.height() - insets.bottom
+        } else {
+            val metrics = context.resources.displayMetrics
+            screenW = metrics.widthPixels
+            // Subtract navigation bar height on older APIs
+            val navBarId = context.resources.getIdentifier(
+                "navigation_bar_height", "dimen", "android"
+            )
+            val navBarH = if (navBarId > 0) context.resources.getDimensionPixelSize(navBarId) else 0
+            screenH = metrics.heightPixels - navBarH
+        }
 
         val overlayW = (screenW * widthPercent).toInt()
 
