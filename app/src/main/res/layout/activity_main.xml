@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Floating back button for car head units without a hardware back key -->
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="12dp"
+        android:background="@android:drawable/dialog_holo_dark_frame"
+        android:contentDescription="@string/go_back"
+        android:src="@android:drawable/ic_media_previous"
+        android:tint="#CCCCCC"
+        android:scaleType="centerInside"
+        android:alpha="0.7" />
+
+</FrameLayout>

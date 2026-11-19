@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    <!-- "D" letter made of separate geometric triangular segments -->
+    <!-- Matches the favicon from dat5ngon.github.io -->
+
+    <!-- Left vertical stroke - top segment -->
+    <path
+        android:fillColor="#4ecdc4"
+        android:pathData="M7,3 L10.5,3 L14,16 Z" />
+    <!-- Left vertical stroke - bottom segment -->
+    <path
+        android:fillColor="#2ab7a9"
+        android:pathData="M7,29 L10.5,29 L14,16 Z" />
+    <!-- Top bar segment -->
+    <path
+        android:fillColor="#3ec9be"
+        android:pathData="M11,3 L18,3 L14,16 Z" />
+    <!-- Upper-right curve segment -->
+    <path
+        android:fillColor="#2db5d6"
+        android:pathData="M18.5,3.5 L24,8 L14,16 Z" />
+    <!-- Right curve - upper segment -->
+    <path
+        android:fillColor="#1e9ec8"
+        android:pathData="M24.5,8.5 L26,15 L14,16 Z" />
+    <!-- Right curve - lower segment -->
+    <path
+        android:fillColor="#1e9ec8"
+        android:pathData="M26,17 L24.5,23.5 L14,16 Z" />
+    <!-- Lower-right curve segment -->
+    <path
+        android:fillColor="#2db5d6"
+        android:pathData="M24,24 L18.5,28.5 L14,16 Z" />
+    <!-- Bottom bar segment -->
+    <path
+        android:fillColor="#3ec9be"
+        android:pathData="M18,29 L11,29 L14,16 Z" />
+</vector>
