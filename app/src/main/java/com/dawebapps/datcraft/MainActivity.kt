@@ -2,11 +2,7 @@ package com.dawebapps.datcraft
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -31,6 +27,11 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Main activity -- displays dat5ngon.github.io in a full-screen WebView.
@@ -50,8 +51,6 @@ class MainActivity : AppCompatActivity() {
     private var pendingNavLng: Double = 0.0
     private var pendingNavName: String = ""
     private val handler = Handler(Looper.getMainLooper())
-    private var pendingDownloadId: Long = -1L
-    private var downloadReceiver: BroadcastReceiver? = null
 
     companion object {
         private const val TAG = "Datcraft"
@@ -220,39 +219,12 @@ class MainActivity : AppCompatActivity() {
         )
 
         // Handle file downloads (e.g. APK download from the home page)
+        // Uses manual HttpURLConnection instead of DownloadManager to avoid
+        // GitHub Pages CDN returning HTTP 412 "Precondition Failed" on conditional headers.
         webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
             val fileName = URLUtil.guessFileName(url, contentDisposition, mimeType)
             Log.i(TAG, "Download requested: $fileName from $url")
-
-            // Delete any previous partial download to avoid "Precondition failed" resume errors
-            try {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val existingFile = java.io.File(downloadsDir, fileName)
-                if (existingFile.exists()) {
-                    existingFile.delete()
-                    Log.i(TAG, "Deleted existing file: $fileName")
-                }
-            } catch (_: Exception) {}
-
-            try {
-                val request = DownloadManager.Request(Uri.parse(url)).apply {
-                    setMimeType(mimeType)
-                    addRequestHeader("User-Agent", userAgent)
-                    setTitle(fileName)
-                    setDescription("Downloading $fileName")
-                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-                }
-                val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-                pendingDownloadId = dm.enqueue(request)
-                Toast.makeText(this, "Downloading $fileName…", Toast.LENGTH_SHORT).show()
-
-                // Register receiver to prompt install when download completes
-                registerDownloadCompleteReceiver()
-            } catch (e: Exception) {
-                Log.e(TAG, "Download failed, opening in browser", e)
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            }
+            downloadFileManually(url, fileName, userAgent, mimeType)
         }
 
         // Load the resume URL if coming from overlay, otherwise load home
@@ -528,57 +500,118 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @SuppressLint("UnspecifiedRegisterReceiverFlag")
-    private fun registerDownloadCompleteReceiver() {
-        // Unregister any previous receiver
-        downloadReceiver?.let {
-            try { unregisterReceiver(it) } catch (_: Exception) {}
-        }
+    /**
+     * Download a file using HttpURLConnection on a background thread.
+     * Avoids DownloadManager which sends conditional headers (If-Range/ETag)
+     * that GitHub Pages CDN rejects with HTTP 412 "Precondition Failed".
+     */
+    private fun downloadFileManually(url: String, fileName: String, userAgent: String, mimeType: String) {
+        Toast.makeText(this, "Downloading $fileName…", Toast.LENGTH_SHORT).show()
 
-        downloadReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                if (id != pendingDownloadId) return
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                // Save to app's cache directory (no storage permission needed)
+                val downloadDir = File(cacheDir, "downloads")
+                downloadDir.mkdirs()
+                val outFile = File(downloadDir, fileName)
 
-                val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-                val uri = dm.getUriForDownloadedFile(id)
-                if (uri != null) {
-                    Log.i(TAG, "Download complete, prompting install: $uri")
-                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, "application/vnd.android.package-archive")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Delete any existing file
+                if (outFile.exists()) outFile.delete()
+
+                // Follow redirects (GitHub Pages uses CDN redirects)
+                var currentUrl = url
+                var redirectCount = 0
+                while (redirectCount < 5) {
+                    connection = URL(currentUrl).openConnection() as HttpURLConnection
+                    connection.setRequestProperty("User-Agent", userAgent)
+                    connection.instanceFollowRedirects = false
+                    connection.connectTimeout = 15_000
+                    connection.readTimeout = 30_000
+                    connection.connect()
+
+                    val code = connection.responseCode
+                    if (code in 300..399) {
+                        val location = connection.getHeaderField("Location")
+                        connection.disconnect()
+                        if (location == null) break
+                        currentUrl = if (location.startsWith("http")) location
+                                     else URL(URL(currentUrl), location).toString()
+                        redirectCount++
+                        continue
                     }
-                    try {
-                        startActivity(installIntent)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to launch installer", e)
-                        Toast.makeText(context, "Please open the downloaded file to install", Toast.LENGTH_LONG).show()
-                    }
-                } else {
-                    Log.w(TAG, "Download failed or file not found")
-                    Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show()
+                    break
                 }
 
-                // Clean up
-                try { unregisterReceiver(this) } catch (_: Exception) {}
-                downloadReceiver = null
-                pendingDownloadId = -1L
-            }
-        }
+                val conn = connection ?: run {
+                    handler.post {
+                        Toast.makeText(this, "Download failed (no connection)", Toast.LENGTH_LONG).show()
+                    }
+                    return@Thread
+                }
+                val responseCode = conn.responseCode
+                if (responseCode != 200) {
+                    Log.e(TAG, "Download HTTP error: $responseCode")
+                    handler.post {
+                        Toast.makeText(this, "Download failed (HTTP $responseCode)", Toast.LENGTH_LONG).show()
+                    }
+                    return@Thread
+                }
 
-        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(downloadReceiver, filter, RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(downloadReceiver, filter)
+                // Stream the response to file
+                val inputStream = conn.inputStream
+                val outputStream = FileOutputStream(outFile)
+                val buffer = ByteArray(8192)
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
+                }
+                outputStream.flush()
+                outputStream.close()
+                inputStream.close()
+
+                Log.i(TAG, "Download complete: ${outFile.absolutePath} (${outFile.length()} bytes)")
+
+                // Prompt install on the UI thread
+                handler.post {
+                    promptInstallApk(outFile)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Download failed", e)
+                handler.post {
+                    Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
+    /**
+     * Launch the system package installer for the downloaded APK file.
+     * Uses FileProvider to grant read permission to the installer.
+     */
+    private fun promptInstallApk(file: File) {
+        try {
+            val uri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                file
+            )
+            Log.i(TAG, "Prompting install for: $uri")
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(installIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch installer", e)
+            Toast.makeText(this, "Please open the downloaded file to install", Toast.LENGTH_LONG).show()
         }
     }
 
     override fun onDestroy() {
-        downloadReceiver?.let {
-            try { unregisterReceiver(it) } catch (_: Exception) {}
-        }
         removePopupWebView()
         handler.removeCallbacksAndMessages(null)
         webView.destroy()

@@ -1,5 +1,6 @@
 package com.dawebapps.datcraft
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -7,6 +8,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.os.Build
@@ -19,6 +21,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
+import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -26,6 +29,7 @@ import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 
 /**
  * Foreground service that displays the WebView as a floating overlay window.
@@ -82,7 +86,14 @@ class FloatingWebViewService : Service() {
                 startForeground(
                     NOTIFICATION_ID,
                     notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
                 )
             } else {
                 startForeground(NOTIFICATION_ID, notification)
@@ -139,6 +150,8 @@ class FloatingWebViewService : Service() {
             settings.loadWithOverviewMode = true
             settings.setSupportMultipleWindows(true)
             settings.javaScriptCanOpenWindowsAutomatically = true
+            @Suppress("DEPRECATION")
+            settings.setGeolocationEnabled(true)
 
             // Enable third-party cookies (required for Google OAuth)
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
@@ -160,10 +173,26 @@ class FloatingWebViewService : Service() {
                     } catch (_: Exception) { }
                     return true
                 }
+
             }
 
             @SuppressLint("SetJavaScriptEnabled")
             webChromeClient = object : WebChromeClient() {
+                override fun onGeolocationPermissionsShowPrompt(
+                    origin: String?,
+                    callback: GeolocationPermissions.Callback?
+                ) {
+                    if (origin != null && origin.contains("dat5ngon.github.io")) {
+                        callback?.invoke(origin, true, true)
+                    } else {
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            this@FloatingWebViewService,
+                            Manifest.permission.ACCESS_FINE_LOCATION
+                        ) == PackageManager.PERMISSION_GRANTED
+                        callback?.invoke(origin, hasPermission, false)
+                    }
+                }
+
                 override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                     Log.d(TAG, "JS Console: ${consoleMessage?.message()} [${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()}]")
                     return true
