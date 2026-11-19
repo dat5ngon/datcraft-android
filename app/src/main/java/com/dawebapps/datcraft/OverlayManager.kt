@@ -1,4 +1,4 @@
-package com.dawebapps.carlauncher
+package com.dawebapps.datcraft
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -17,7 +17,7 @@ import android.view.WindowManager
 class OverlayManager(private val context: Context) {
 
     companion object {
-        private const val PREFS_NAME = "car_launcher_prefs"
+        private const val PREFS_NAME = "datcraft_prefs"
         private const val KEY_SIDE = "overlay_side"       // "left" or "right"
         private const val KEY_WIDTH_PCT = "overlay_width"  // 0.0-1.0
         private const val DEFAULT_WIDTH_PCT = 0.4f

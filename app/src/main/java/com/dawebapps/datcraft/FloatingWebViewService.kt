@@ -1,4 +1,4 @@
-package com.dawebapps.carlauncher
+package com.dawebapps.datcraft
 
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -35,12 +35,12 @@ import androidx.core.app.NotificationCompat
 class FloatingWebViewService : Service() {
 
     companion object {
-        private const val TAG = "FloatingWebView"
+        private const val TAG = "Datcraft.Overlay"
         const val CHANNEL_ID = "floating_webview_channel"
         const val NOTIFICATION_ID = 1001
         const val EXTRA_URL = "url"
-        const val ACTION_STOP = "com.dawebapps.carlauncher.STOP_OVERLAY"
-        const val ACTION_SWAP_SIDE = "com.dawebapps.carlauncher.SWAP_SIDE"
+        const val ACTION_STOP = "com.dawebapps.datcraft.STOP_OVERLAY"
+        const val ACTION_SWAP_SIDE = "com.dawebapps.datcraft.SWAP_SIDE"
     }
 
     private var windowManager: WindowManager? = null
@@ -216,7 +216,7 @@ class FloatingWebViewService : Service() {
                 WebAppInterface(this@FloatingWebViewService) { _, _, _ ->
                     // Navigation from floating overlay -- already in nav mode, ignore
                 },
-                "CarLauncher"
+                "Datcraft"
             )
 
             loadUrl(url)

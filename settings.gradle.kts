@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CarLauncher"
+rootProject.name = "Datcraft"
 include(":app")

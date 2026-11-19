@@ -1,10 +1,10 @@
-package com.dawebapps.carlauncher
+package com.dawebapps.datcraft
 
 import android.content.Context
 import android.webkit.JavascriptInterface
 
 /**
- * JavaScript bridge injected into the WebView as `window.CarLauncher`.
+ * JavaScript bridge injected into the WebView as `window.Datcraft`.
  * Allows the car-nav web app to trigger native Google Maps navigation
  * and control the floating overlay.
  */
@@ -15,7 +15,7 @@ class WebAppInterface(
 
     /** Web apps call this to detect they're running inside the native shell. */
     @JavascriptInterface
-    fun isCarLauncher(): Boolean = true
+    fun isDatcraft(): Boolean = true
 
     /**
      * Called from car-nav/map.js when the user taps "Start".

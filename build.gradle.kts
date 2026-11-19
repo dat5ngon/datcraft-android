@@ -1,4 +1,4 @@
-// Top-level build file for Car Launcher
+// Top-level build file for Datcraft
 plugins {
     id("com.android.application") version "8.2.0" apply false
     id("org.jetbrains.kotlin.android") version "1.9.21" apply false

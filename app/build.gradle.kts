@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.dawebapps.carlauncher"
+    namespace = "com.dawebapps.datcraft"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.dawebapps.carlauncher"
+        applicationId = "com.dawebapps.datcraft"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

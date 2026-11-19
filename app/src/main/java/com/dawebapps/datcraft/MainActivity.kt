@@ -1,4 +1,4 @@
-package com.dawebapps.carlauncher
+package com.dawebapps.datcraft
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -25,9 +25,10 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+
 /**
  * Main activity -- displays dat5ngon.github.io in a full-screen WebView.
- * Injects the CarLauncher JS bridge so web apps can trigger native navigation.
+ * Injects the Datcraft JS bridge so web apps can trigger native navigation.
  *
  * When navigation starts:
  * 1. Start the floating overlay service (creates the floating WebView window)
@@ -45,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
 
     companion object {
-        private const val TAG = "CarLauncher"
+        private const val TAG = "Datcraft"
         const val HOME_URL = "https://dat5ngon.github.io"
         private const val OVERLAY_PERMISSION_REQUEST = 1234
         private const val LOCATION_PERMISSION_REQUEST = 1235
@@ -206,7 +207,7 @@ class MainActivity : AppCompatActivity() {
                     onNavigationRequested(lat, lng, name)
                 }
             },
-            "CarLauncher"
+            "Datcraft"
         )
 
         webView.loadUrl(HOME_URL)
