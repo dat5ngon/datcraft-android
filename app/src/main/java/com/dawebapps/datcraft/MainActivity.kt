@@ -3,7 +3,10 @@ package com.dawebapps.datcraft
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -47,6 +50,8 @@ class MainActivity : AppCompatActivity() {
     private var pendingNavLng: Double = 0.0
     private var pendingNavName: String = ""
     private val handler = Handler(Looper.getMainLooper())
+    private var pendingDownloadId: Long = -1L
+    private var downloadReceiver: BroadcastReceiver? = null
 
     companion object {
         private const val TAG = "Datcraft"
@@ -228,8 +233,11 @@ class MainActivity : AppCompatActivity() {
                     setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
                 }
                 val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-                dm.enqueue(request)
+                pendingDownloadId = dm.enqueue(request)
                 Toast.makeText(this, "Downloading $fileName…", Toast.LENGTH_SHORT).show()
+
+                // Register receiver to prompt install when download completes
+                registerDownloadCompleteReceiver()
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed, opening in browser", e)
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -509,7 +517,57 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    private fun registerDownloadCompleteReceiver() {
+        // Unregister any previous receiver
+        downloadReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+        }
+
+        downloadReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                if (id != pendingDownloadId) return
+
+                val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+                val uri = dm.getUriForDownloadedFile(id)
+                if (uri != null) {
+                    Log.i(TAG, "Download complete, prompting install: $uri")
+                    val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "application/vnd.android.package-archive")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    try {
+                        startActivity(installIntent)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to launch installer", e)
+                        Toast.makeText(context, "Please open the downloaded file to install", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Log.w(TAG, "Download failed or file not found")
+                    Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show()
+                }
+
+                // Clean up
+                try { unregisterReceiver(this) } catch (_: Exception) {}
+                downloadReceiver = null
+                pendingDownloadId = -1L
+            }
+        }
+
+        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadReceiver, filter, RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(downloadReceiver, filter)
+        }
+    }
+
     override fun onDestroy() {
+        downloadReceiver?.let {
+            try { unregisterReceiver(it) } catch (_: Exception) {}
+        }
         removePopupWebView()
         handler.removeCallbacksAndMessages(null)
         webView.destroy()
