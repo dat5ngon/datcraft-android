@@ -295,12 +295,11 @@ class MainActivity : AppCompatActivity() {
      * of Google Maps. Google Maps runs full-screen underneath.
      */
     private fun launchNavigationSequence() {
-        val currentUrl = webView.url ?: HOME_URL
-        Log.i(TAG, "══════ launchNavigationSequence URL=$currentUrl ══════")
+        Log.i(TAG, "══════ launchNavigationSequence ══════")
 
-        // Step 1: Start the floating overlay
+        // Step 1: Start the floating overlay with the home page
         val serviceIntent = Intent(this, FloatingWebViewService::class.java).apply {
-            putExtra(FloatingWebViewService.EXTRA_URL, currentUrl)
+            putExtra(FloatingWebViewService.EXTRA_URL, HOME_URL)
         }
 
         try {
@@ -328,6 +327,9 @@ class MainActivity : AppCompatActivity() {
             pendingNavLat = 0.0
             pendingNavLng = 0.0
             pendingNavName = ""
+
+            // Navigate main WebView back to home so it's ready when user returns
+            webView.loadUrl(HOME_URL)
         }, OVERLAY_SETTLE_DELAY_MS)
     }
 

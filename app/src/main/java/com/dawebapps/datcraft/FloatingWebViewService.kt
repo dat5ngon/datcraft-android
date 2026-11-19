@@ -138,6 +138,10 @@ class FloatingWebViewService : Service() {
             settings.useWideViewPort = true
             settings.loadWithOverviewMode = true
             settings.setSupportMultipleWindows(true)
+            settings.javaScriptCanOpenWindowsAutomatically = true
+
+            // Enable third-party cookies (required for Google OAuth)
+            CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
             webViewClient = object : WebViewClient() {
                 @Deprecated("Deprecated in Java")
@@ -160,12 +164,18 @@ class FloatingWebViewService : Service() {
 
             @SuppressLint("SetJavaScriptEnabled")
             webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                    Log.d(TAG, "JS Console: ${consoleMessage?.message()} [${consoleMessage?.sourceId()}:${consoleMessage?.lineNumber()}]")
+                    return true
+                }
+
                 override fun onCreateWindow(
                     view: WebView?,
                     isDialog: Boolean,
                     isUserGesture: Boolean,
                     resultMsg: Message?
                 ): Boolean {
+                    Log.i(TAG, "onCreateWindow called -- isDialog=$isDialog isUserGesture=$isUserGesture")
                     val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
 
                     removePopupWebView()
@@ -175,6 +185,8 @@ class FloatingWebViewService : Service() {
                         javaScriptEnabled = true
                         domStorageEnabled = true
                         setSupportMultipleWindows(true)
+                        javaScriptCanOpenWindowsAutomatically = true
+                        userAgentString = floatingWebView?.settings?.userAgentString
                     }
                     CookieManager.getInstance().setAcceptThirdPartyCookies(popup, true)
 
