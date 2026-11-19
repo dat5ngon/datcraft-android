@@ -10,18 +10,59 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Floating back button for car head units without a hardware back key -->
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="44dp"
-        android:layout_height="44dp"
-        android:layout_gravity="bottom|start"
-        android:layout_margin="12dp"
-        android:background="@android:drawable/dialog_holo_dark_frame"
-        android:contentDescription="@string/go_back"
-        android:src="@android:drawable/ic_media_previous"
-        android:tint="#CCCCCC"
-        android:scaleType="centerInside"
-        android:alpha="0.7" />
+    <!-- Vertical floating toolbar pill, top-right corner -->
+    <LinearLayout
+        android:id="@+id/toolbarPill"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="12dp"
+        android:orientation="vertical"
+        android:background="@drawable/toolbar_pill_bg"
+        android:elevation="8dp"
+        android:padding="4dp">
+
+        <!-- Home button -->
+        <TextView
+            android:id="@+id/btnHome"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:gravity="center"
+            android:text="⌂"
+            android:textColor="#444444"
+            android:textSize="22sp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/go_home" />
+
+        <!-- Float left button (enter overlay mode, overlay on left) -->
+        <ImageView
+            android:id="@+id/btnFloatLeft"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_float_left"
+            android:scaleType="fitCenter"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/float_left" />
+
+        <!-- Float right button (enter overlay mode, overlay on right) -->
+        <ImageView
+            android:id="@+id/btnFloatRight"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_float_right"
+            android:scaleType="fitCenter"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/float_right" />
+
+    </LinearLayout>
 
 </FrameLayout>

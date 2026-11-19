@@ -263,7 +263,10 @@ class FloatingWebViewService : Service() {
         // Wire up control buttons
         setupControls()
 
-        // Attach drag listener to the handle bar
+        // Position toolbar pill on the correct edge based on overlay side
+        updateToolbarPosition(manager.side)
+
+        // Attach drag listener to the drag handle in the toolbar pill
         val dragHandle = overlayView?.findViewById<android.view.View>(R.id.dragHandle)
         if (dragHandle != null && overlayView != null && layoutParams != null) {
             manager.attachDragListener(dragHandle, overlayView!!, windowManager!!, layoutParams!!)
@@ -275,30 +278,56 @@ class FloatingWebViewService : Service() {
     private fun setupControls() {
         // Back button -- navigate the floating WebView back
         overlayView?.findViewById<android.view.View>(R.id.btnBack)?.setOnClickListener {
+            Log.d(TAG, "Back button clicked, canGoBack=${floatingWebView?.canGoBack()}")
             floatingWebView?.let { wv ->
-                if (wv.canGoBack()) wv.goBack()
+                if (wv.canGoBack()) {
+                    wv.goBack()
+                } else {
+                    wv.loadUrl(MainActivity.HOME_URL)
+                }
             }
         }
 
         // Swap sides button
         overlayView?.findViewById<android.view.View>(R.id.btnSwapSide)?.setOnClickListener {
+            Log.d(TAG, "Swap side button clicked")
             swapSide()
         }
 
         // Minimize button -- remove overlay, keep service running
         overlayView?.findViewById<android.view.View>(R.id.btnMinimize)?.setOnClickListener {
+            Log.d(TAG, "Minimize button clicked")
             removeOverlay()
         }
 
         // Full screen button -- stop overlay service, return to full-screen WebView
         overlayView?.findViewById<android.view.View>(R.id.btnFullScreen)?.setOnClickListener {
-            // Launch MainActivity back to foreground
+            Log.d(TAG, "Full screen button clicked")
+            // Pass the current overlay URL so MainActivity resumes at the same page
+            val currentUrl = floatingWebView?.url ?: MainActivity.HOME_URL
             val mainIntent = Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra(MainActivity.EXTRA_RESUME_URL, currentUrl)
             }
             startActivity(mainIntent)
             stopSelf()
         }
+    }
+
+    /**
+     * Position the toolbar pill on the edge closest to the map.
+     * When overlay is on the left, toolbar goes to the right edge (end).
+     * When overlay is on the right, toolbar goes to the left edge (start).
+     */
+    private fun updateToolbarPosition(side: String) {
+        val toolbar = overlayView?.findViewById<android.view.View>(R.id.toolbarPill) ?: return
+        val lp = toolbar.layoutParams as? FrameLayout.LayoutParams ?: return
+        lp.gravity = if (side == "left") {
+            Gravity.END or Gravity.CENTER_VERTICAL
+        } else {
+            Gravity.START or Gravity.CENTER_VERTICAL
+        }
+        toolbar.layoutParams = lp
     }
 
     private fun swapSide() {
@@ -317,6 +346,9 @@ class FloatingWebViewService : Service() {
         } catch (_: Exception) {
             // View may have been removed
         }
+
+        // Move toolbar pill to the opposite edge
+        updateToolbarPosition(newSide)
     }
 
     private fun removePopupWebView() {

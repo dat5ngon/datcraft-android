@@ -48,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "Datcraft"
         const val HOME_URL = "https://dat5ngon.github.io"
+        const val EXTRA_RESUME_URL = "resume_url"
         private const val OVERLAY_PERMISSION_REQUEST = 1234
         private const val LOCATION_PERMISSION_REQUEST = 1235
         private const val NOTIFICATION_PERMISSION_REQUEST = 1236
@@ -210,11 +211,59 @@ class MainActivity : AppCompatActivity() {
             "Datcraft"
         )
 
-        webView.loadUrl(HOME_URL)
+        // Load the resume URL if coming from overlay, otherwise load home
+        val startUrl = intent?.getStringExtra(EXTRA_RESUME_URL) ?: HOME_URL
+        webView.loadUrl(startUrl)
 
-        // Back button for car head units without a hardware back key
-        findViewById<android.view.View>(R.id.btnBack).setOnClickListener {
-            if (webView.canGoBack()) webView.goBack()
+        // Toolbar buttons
+        findViewById<android.view.View>(R.id.btnHome).setOnClickListener {
+            webView.loadUrl(HOME_URL)
+        }
+        findViewById<android.view.View>(R.id.btnFloatLeft).setOnClickListener {
+            startFloatingOverlay("left")
+        }
+        findViewById<android.view.View>(R.id.btnFloatRight).setOnClickListener {
+            startFloatingOverlay("right")
+        }
+    }
+
+    /**
+     * Start the floating overlay service with the current WebView URL,
+     * positioning the overlay on the specified side.
+     */
+    private fun startFloatingOverlay(side: String) {
+        if (!hasOverlayPermission()) {
+            Toast.makeText(this, "Please grant 'Display over other apps' permission", Toast.LENGTH_LONG).show()
+            requestOverlayPermission()
+            return
+        }
+
+        // Set the preferred side before starting the service
+        val overlayManager = OverlayManager(this)
+        overlayManager.side = side
+
+        val currentUrl = webView.url ?: HOME_URL
+        val serviceIntent = Intent(this, FloatingWebViewService::class.java).apply {
+            putExtra(FloatingWebViewService.EXTRA_URL, currentUrl)
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+            Log.i(TAG, "Started floating overlay on $side side with URL: $currentUrl")
+
+            // Go to home screen so the overlay floats over whatever app the user switches to
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(homeIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start overlay service", e)
+            Toast.makeText(this, "Failed to start overlay: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -422,6 +471,16 @@ class MainActivity : AppCompatActivity() {
         } else {
             @Suppress("DEPRECATION")
             super.onBackPressed()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val resumeUrl = intent?.getStringExtra(EXTRA_RESUME_URL)
+        if (!resumeUrl.isNullOrEmpty()) {
+            Log.i(TAG, "onNewIntent: resuming URL $resumeUrl")
+            webView.loadUrl(resumeUrl)
         }
     }
 

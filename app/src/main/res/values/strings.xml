@@ -9,6 +9,11 @@
     <string name="swap_sides">Swap sides</string>
     <string name="minimize">Minimize</string>
     <string name="full_screen">Full screen</string>
+    <string name="drag_handle">Drag to move</string>
+    <string name="go_forward">Go forward</string>
+    <string name="go_home">Go home</string>
+    <string name="float_left">Float left</string>
+    <string name="float_right">Float right</string>
     <string name="overlay_permission_title">Overlay Permission Required</string>
     <string name="overlay_permission_message">Datcraft needs permission to display over other apps so the web panel can float alongside Google Maps navigation.</string>
     <string name="grant_permission">Grant Permission</string>
